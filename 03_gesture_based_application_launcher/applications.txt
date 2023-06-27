@@ -1,0 +1,3 @@
+triangle /usr/bin/xterm
+circle /usr/bin/firefox
+pigtail /usr/bin/gimp
