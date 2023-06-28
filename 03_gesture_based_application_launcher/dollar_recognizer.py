@@ -23,14 +23,15 @@ class Dollar_Recognizer:
                 for element in xml_root.findall('Point'):
                     x = element.get('X')
                     y = element.get('Y')
-                    points.append([float(x), float(y)])
+                    points.append([int(x), int(y)])
 
-                self.templates.append(Template(label, points))
+                transformed = self.transform(points=points)
 
+                templates.append(Template(label, transformed))
         return templates
 
     def recognize(self, points: List[List[int]]):
-        transformed_points = self.recognize(points=points)
+        transformed_points = self.transform(points=points)
         result = self.recognizer.recognize(points=transformed_points)
 
         return result
