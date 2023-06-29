@@ -6,16 +6,19 @@ from dollarpy import Point, Recognizer, Template
 
 
 class Dollar_Recognizer:
-    def __init__(self) -> None:
-        self.templates = self.get_templates()
+    def __init__(self, gestures) -> None:
+        self.templates = self.get_templates(gestures)
         self.recognizer = Recognizer(self.templates)
 
-    def get_templates(self) -> List[Template]:
+    def get_templates(self, gestures) -> List[Template]:
         templates = []
-        for root, _, files in os.walk('03_gesture_based_application_launcher/gesture_templates'):
+        for root, _, files in os.walk('gesture_templates'):
             for file in files:
                 fname = file.split('.')[0]
                 label = fname[:-2]
+                print(gestures)
+                if label not in gestures:
+                    continue
 
                 xml_root = ET.parse(f'{root}/{file}').getroot()
 
