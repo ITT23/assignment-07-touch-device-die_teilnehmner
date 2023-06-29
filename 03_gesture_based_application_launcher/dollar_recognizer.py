@@ -12,7 +12,7 @@ class Dollar_Recognizer:
 
     def get_templates(self, gestures) -> List[Template]:
         templates = []
-        for root, _, files in os.walk('gesture_templates'):
+        for root, _, files in os.walk('03_gesture_based_application_launcher/gesture_templates'):
             for file in files:
                 fname = file.split('.')[0]
                 label = fname[:-2]
