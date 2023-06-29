@@ -15,7 +15,7 @@ WINDOW_HEIGHT = 600
 
 sock = socket(AF_INET, SOCK_DGRAM)
 sensor = SensorUDP(PORT)
-recognizer = Dollar_Recognizer()
+#recognizer = Dollar_Recognizer()
 
 def on_click(x, y, button, pressed):
     global mouse_pressed
@@ -72,8 +72,11 @@ def setup_gestures():
 
 
 def run():
-    global coords, mouse_pressed, gestures
+    global coords, mouse_pressed, gestures, recognizer
     gestures = setup_gestures()
+    if(len(gestures) != 0):
+        recognized_gestures = get_gestures(gestures)
+        recognizer = Dollar_Recognizer(recognized_gestures)
     #recognizer = Dollar_Recognizer()
     win = pyglet.window.Window(WINDOW_WIDTH, WINDOW_HEIGHT)
     coords = []
@@ -87,10 +90,12 @@ def run():
                 if(type == 'touch'):
                     x = events[event]['x']
                     y = events[event]['y']
+                    print('test')
                     coords.append([x, y])
         elif(len(coords) != 0):
             recognize()
             coords = []
+        print(coords)
     @win.event
     def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
         on_move(x, y)
@@ -103,20 +108,8 @@ def run():
         }
         sock.sendto(dumps(message).encode(), (IP, PORT))
 
-
-
     pyglet.app.run()
-    #while True:
-        #coords = []
-        #mouse_pressed = False
-        #with mouse.Listener(on_click=on_click, on_move=on_move, suppress=False) as listener:
-            #listener.join()
-        #if coords:
-            #result = recognizer.recognize(coords)
-            #print(result)
-            #for mapping in gestures:
-                #if mapping['gesture'] == result[0]:
-                    #os.system(mapping['program'])
+
 
 def recognize():
     global coords
@@ -125,11 +118,22 @@ def recognize():
         #coord[0] = coord[0] * WINDOW_WIDTH
         #coord[1] = coord[1] * WINDOW_HEIGHT
     #print(coords)
+    if(coords[0][0] == coords[len(coords) - 1][0] and coords[0][1] == coords[len(coords) - 1][1]):
+        return
     result = recognizer.recognize(coords)
     print(result)
     for mapping in gestures:
         if mapping['gesture'] == result[0]:
             os.system(mapping['program'])
+
+def get_gestures(gestures):
+    recognized_gestures =  []
+    #print(gestures)
+    for i in range(3):
+        recognized_gestures.append(gestures[i]['gesture'])
+    return recognized_gestures
+
+
 
 
 if __name__ == '__main__':
