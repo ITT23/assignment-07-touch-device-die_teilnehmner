@@ -64,6 +64,37 @@ def init():
 # => alle Sprites zur Gruppe background, geclickter sprite zur gruppe foreground
 # https://pyglet.readthedocs.io/en/latest/modules/graphics/#pyglet.graphics.Group
 
+def get_selected_sprite(x_pos: int, y_pos: int) -> pyglet.sprite.Sprite | None:
+    selected_sprite = None
+    for sprite in sprites:
+        x = sprite.x
+        y = sprite.y
+        height = sprite.height
+        width = sprite.width
+        angle = sprite.rotation / 180 * np.pi
+
+        # rotate pos counterclockwise around center
+
+        rotated_x_pos = x + math.cos(angle) * \
+            (x_pos - x) - math.sin(angle) * (y_pos - y)
+        rotated_y_pos = y + math.sin(angle) * \
+            (x_pos - x) + math.cos(angle) * (y_pos - y)
+
+        if rotated_x_pos < (x-width//2) or rotated_x_pos > (x + width//2):
+            if sprite.group == foreground_group:
+                sprite.group = backgound_group
+            continue
+        if rotated_y_pos < (y-height//2) or rotated_y_pos > (y + height//2):
+            if sprite.group == foreground_group:
+                sprite.group = backgound_group
+            continue
+        if sprite.group == foreground_group:
+            return sprite
+        selected_sprite = sprite
+    if selected_sprite:
+        selected_sprite.group = foreground_group
+    return selected_sprite
+
 
 @window.event
 def on_key_press(symbol, modifiers):
