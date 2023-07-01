@@ -117,9 +117,9 @@ def check_events_in_sprite():
                 if(len(event_list) == 1):
                     move_picture(last_events[id(sprite)][0], event_list[0], sprite)
                 if(len(event_list) == 2):
-                    scale_picture(last_events[id(sprite)], event_list, sprite)
-                    #rotate_picture(last_events[id(sprite)], event_list, sprite)
-                if(len(event_list) >= 2):
+                    #scale_picture(last_events[id(sprite)], event_list, sprite)
+                    rotate_picture(last_events[id(sprite)], event_list, sprite)
+                if(len(event_list) > 2):
                     print('you should use 2 fingers per sprite at maximum')
             last_events[id(sprite)] = event_list
             return
@@ -147,24 +147,62 @@ def move_picture(first_event, second_event, sprite):
 def scale_picture(first_event_list, second_event_list, sprite):
     previous_distance = calc_distance(first_event_list)
     current_distance = calc_distance(second_event_list)
+    print(f'previous: {previous_distance} and current: {current_distance}')
     pinch_distance = current_distance - previous_distance
 
-    sprite_diagonal = math.sqrt((sprite.width ** 2) + (sprite.height ** 2))
-    base_value = sprite_diagonal - (sprite_diagonal * (sprite.scale - 1))
-    scale = (sprite_diagonal + pinch_distance) / base_value
+    #sprite_diagonal = math.sqrt((sprite.width ** 2) + (sprite.height ** 2))
+    #base_value = sprite_diagonal - (sprite_diagonal * (sprite.scale - 1))
+    #scale = (sprite_diagonal + pinch_distance) / base_value
+    scale = sprite.scale
+    if(pinch_distance > 0):
+        scale += 0.005
+    elif(pinch_distance < 0):
+        scale -= 0.005
     sprite.update(scale= scale)
 
 def rotate_picture(first_event_list, second_event_list, sprite):
-    midpoint_x = ((first_event_list[0].x - first_event_list[1].x) / 2) + first_event_list[1].x
-    midpoint_y = ((first_event_list[0].y - first_event_list[1].y) / 2) + first_event_list[1].y
+    #midpoint_x = ((first_event_list[0].x - first_event_list[1].x) / 2) + first_event_list[1].x
+    #midpoint_y = ((first_event_list[0].y - first_event_list[1].y) / 2) + first_event_list[1].y
 
-    a = calc_distance([first_event_list[0], Event('helper_event', midpoint_x, midpoint_y)])
-    c = calc_distance([second_event_list[0], Event('helper_event', midpoint_x, midpoint_y)])
+    #a = calc_distance([first_event_list[0], Event('helper_event', midpoint_x, midpoint_y)])
+    #c = calc_distance([second_event_list[0], Event('helper_event', midpoint_x, midpoint_y)])
+    #print(f'a: {a} and c: {c}, distance: {a/c}')
 
 
-    rotation_angle = math.acos(a/c)
+    #rotation_angle = math.acos(a/c)
+    first_vector, second_vector = get_vectors(first_event_list, second_event_list)
 
+
+    dot_product = first_vector[0] * second_vector[0] + first_vector[1] * second_vector [1]
+    amount_first_vector = math.sqrt((first_vector[0] ** 2) + first_vector[1] ** 2)
+    amount_second_vector = math.sqrt((second_vector[0] ** 2) + second_vector[1] ** 2)
+
+    print(f'first vector: {first_vector} and second vector: {second_vector}')
+    print(f'dot_product: {dot_product}, amount first vecotr: {amount_first_vector} and amout second vector: {amount_second_vector}')
+    product_amount = amount_first_vector * amount_second_vector
+    print(f'product amount {product_amount}')
+
+    print(f'division: {dot_product/product_amount}')
+    if(dot_product/product_amount >=1):
+        return
+
+    rotation_angle = math.acos(dot_product/product_amount)
     sprite.update(rotation= sprite.rotation + rotation_angle)
+
+def get_vectors(events_first_vector, events_second_vector):
+    first_vector = []
+    first_x = events_first_vector[1].x - events_first_vector[0].x
+    first_y = events_first_vector[1].y - events_first_vector[0].y
+    first_vector.append(first_x)
+    first_vector.append(first_y)
+
+    second_vector = []
+    second_x = (events_second_vector[1].x - events_first_vector[0].x) - (events_second_vector[0].x - events_first_vector[0].x)
+    second_y = (events_second_vector[1].y - events_first_vector[0].y) - (events_second_vector[0].y - events_first_vector[0].y)
+    second_vector.append(second_x)
+    second_vector.append(second_y)
+
+    return first_vector, second_vector
 
 
 def calc_distance(event_list):
