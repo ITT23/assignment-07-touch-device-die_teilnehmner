@@ -16,7 +16,6 @@ class Dollar_Recognizer:
             for file in files:
                 fname = file.split('.')[0]
                 label = fname[:-2]
-                print(gestures)
                 if label not in gestures:
                     continue
 
