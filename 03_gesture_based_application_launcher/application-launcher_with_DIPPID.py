@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from json import dumps
 from socket import AF_INET, SOCK_DGRAM, socket
@@ -9,41 +10,10 @@ from DIPPID import SensorUDP
 from dollar_recognizer import Dollar_Recognizer
 from pynput import mouse
 
-IP = '127.0.0.1'
-PORT = 5700
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-
 sock = socket(AF_INET, SOCK_DGRAM)
-sensor = SensorUDP(PORT)
+sensor = SensorUDP(config.PORT)
 timer = 0
-
-
-def on_click(x, y, button, pressed):
-    global mouse_pressed
-    print(pressed)
-    if button == mouse.Button.right and pressed:
-        mouse_pressed = pressed
-    else:
-        mouse_pressed = not pressed
-        return False
-
-
-def on_move(x, y):
-    global coords
-    y = WINDOW_HEIGHT - y
-    x /= WINDOW_WIDTH
-    y /= WINDOW_HEIGHT
-    message = {
-        'events': {
-            0: {
-                'type': 'touch',
-                'x': x,
-                'y': y
-            }
-        }
-    }
-    sock.sendto(dumps(message).encode(), (IP, PORT))
+window = pyglet.window.Window(config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
 
 
 def setup_gestures():
@@ -70,60 +40,72 @@ def setup_gestures():
     return gesture_mapping
 
 
-def run():
-    global coords, mouse_pressed, gestures, recognizer
+def init():
+    global coords, gestures, recognizer
     gestures = setup_gestures()
-    if (len(gestures) != 0):
-        recognized_gestures = get_gestures(gestures)
+    if gestures:
+        recognized_gestures = get_gesture_labels(gestures)
         recognizer = Dollar_Recognizer(recognized_gestures)
     else:
-        print('you have to enter gestures with paths in your application.txt')
+        print('You have to enter gestures with paths in your application.txt')
         return
-    # recognizer = Dollar_Recognizer()
-    win = pyglet.window.Window(WINDOW_WIDTH, WINDOW_HEIGHT)
+
     coords = []
 
-    @win.event
-    def on_draw():
-        global coords, timer
-        events = sensor.get_value('events')
-        if (events != None and len(events) != 0):
-            for event in events:
-                type = events[event]['type']
-                if (type == 'touch'):
-                    timer = time.time()
-                    x = events[event]['x']
-                    y = events[event]['y']
-                    coords.append([x, y])
-        elif (len(coords) != 0 and time.time() - timer > 0.5):
-            recognize()
-            coords = []
-            timer = 0
-        # print(coords)
 
-    @win.event
-    def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-        on_move(x, y)
+@window.event
+def on_key_press(symbol, modifiers):
+    if symbol == pyglet.window.key.Q:
+        window.close()
+        sys.exit()
 
-    @win.event
-    def on_mouse_release(x, y, button, modifiers):
-        message = {
-            'events': {
 
+@window.event
+def on_draw():
+    global coords, timer
+    events = sensor.get_value('events')
+    if events:
+        for event in events:
+            type = events[event]['type']
+            if (type == 'touch'):
+                timer = time.time()
+                x = events[event]['x']
+                y = events[event]['y']
+                coords.append([x, y])
+    elif coords and (time.time() - timer > 0.5):
+        recognize()
+        coords = []
+        timer = 0
+
+
+@window.event
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    y = config.WINDOW_HEIGHT - y
+    x /= config.WINDOW_WIDTH
+    y /= config.WINDOW_HEIGHT
+    message = {
+        'events': {
+            0: {
+                'type': 'touch',
+                'x': x,
+                'y': y
             }
         }
-        sock.sendto(dumps(message).encode(), (IP, PORT))
+    }
+    sock.sendto(dumps(message).encode(), (config.IP, config.PORT))
 
-    pyglet.app.run()
+
+@window.event
+def on_mouse_release(x, y, button, modifiers):
+    message = {
+        'events': {}
+    }
+    sock.sendto(dumps(message).encode(), (config.IP, config.PORT))
 
 
 def recognize():
     global coords
     print(coords)
-    # for coord in coords:
-    # coord[0] = coord[0] * WINDOW_WIDTH
-    # coord[1] = coord[1] * WINDOW_HEIGHT
-    # print(coords)
     if (coords[0][0] == coords[len(coords) - 1][0] and coords[0][1] == coords[len(coords) - 1][1]):
         return
     result = recognizer.recognize(coords)
@@ -133,7 +115,7 @@ def recognize():
             os.system(mapping['program'])
 
 
-def get_gestures(gestures):
+def get_gesture_labels(gestures):
     recognized_gestures = []
     for gesture in gestures:
         recognized_gestures.append(gesture['gesture'])
@@ -141,4 +123,5 @@ def get_gestures(gestures):
 
 
 if __name__ == '__main__':
-    run()
+    init()
+    pyglet.app.run()
