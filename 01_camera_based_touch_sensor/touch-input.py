@@ -14,11 +14,8 @@ import config
 import cv2
 import numpy as np
 
-THRESHOLD_TAB = 35
-THRESHOLD_HOVER = 65
-
-IP = '127.0.0.1'
-PORT = 5700
+THRESHOLD_TAB = 0
+THRESHOLD_HOVER = 0
 
 message = {
     'events': {}
@@ -52,6 +49,10 @@ def calibrate(cap):
 
     THRESHOLD_TAB = average / 2.8
     THRESHOLD_HOVER = average / 1.8
+
+    if (config.DEBUG):
+        print(
+            f'Otsu threshold: {average}\nTouch Threshold: {THRESHOLD_TAB}\Hover Threshold: {THRESHOLD_HOVER}')
 
 
 def get_otsu_thresh(cap):
@@ -132,7 +133,7 @@ def main():
         message['events'] = {
 
         }
-        if (config.DEBUG_FLAG_TOUCH_INPUT):
+        if (config.DEBUG):
             cv2.imshow('frame', closing)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -204,7 +205,7 @@ def send_data():
     '''
     Converts the dictionary to a json and sends it to localhost via DIPPID protocol
     '''
-    sock.sendto(dumps(message).encode(), (IP, PORT))
+    sock.sendto(dumps(message).encode(), (config.IP, config.PORT))
 
 
 main()
