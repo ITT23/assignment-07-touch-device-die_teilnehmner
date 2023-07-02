@@ -79,6 +79,9 @@ def on_draw():
                 x = events[event]['x']
                 y = events[event]['y']
                 coords.append([x, y])
+        for coord in coords:
+            coord[0] = coord[0] * config.WINDOW_WIDTH
+            coord[1] = coord[1] * config.WINDOW_HEIGHT
     elif coords and (time.time() - timer > 0.5):
         recognize()
         coords = []
@@ -132,9 +135,8 @@ def recognize():
     Retrieves One Dollar Recognizer result and launches corresponding program
     '''
     print(coords)
-    # Brauchen wir das?
-    # if (coords[0][0] == coords[-1][0] and coords[0][1] == coords[-1][1]):
-    #     return
+    if (coords[0][0] == coords[-1][0] and coords[0][1] == coords[-1][1]):
+        return
     result = recognizer.recognize(coords)
     print(result)
     for label, program in gestures.items():
