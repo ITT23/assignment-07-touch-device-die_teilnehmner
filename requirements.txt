@@ -1,0 +1,6 @@
+dollarpy==0.1.1
+numpy==1.25.0
+opencv-python==4.8.0.74
+pyglet==2.0.8
+pynput==1.7.6
+six==1.16.0
