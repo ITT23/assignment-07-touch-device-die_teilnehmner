@@ -1,0 +1,3 @@
+v usr/bin/firefox
+circle usr/bin/gimp
+x usr/bin/code
