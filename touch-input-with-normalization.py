@@ -1,3 +1,4 @@
+import time
 from json import dumps
 from socket import AF_INET, SOCK_DGRAM, socket
 
@@ -11,9 +12,7 @@ IP = '127.0.0.1'
 PORT = 5700
 
 message = {
-    'events': {
-
-    }
+    'events': {}
 }
 sock = socket(AF_INET, SOCK_DGRAM)
 frame_width = 0
@@ -32,22 +31,37 @@ def calibrate(cap):
 
     # substract higher value from threshold to generate THRESHOLD_TAB
     global THRESHOLD_TAB, THRESHOLD_HOVER
-    while True:
-        ret, frame = cap.read()
-        img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
-        otsu_thresh, otsu_frame = cv2.threshold(
-            blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        print(otsu_thresh)
-        print(f'Difference Hover: {otsu_thresh-THRESHOLD_HOVER}')
-        print(f'Difference Tab: {otsu_thresh-THRESHOLD_TAB}')
+    # Don't place anything on touchscreen
+    print("Place finger on touchscreen")
+    time.sleep(2)
+    print('Starting calibration...')
+    # Place finger on touchscreen
+    time_end = time.time() + 5
+    while time.time() < time_end:
+        thresh = get_otsu_thresh(cap)
+    print('Calibration complete')
+    print(thresh)
+
+    THRESHOLD_TAB = thresh/2.5
+    THRESHOLD_HOVER = thresh/1.5
+    # print(f'Difference Hover: {otsu_thresh-THRESHOLD_HOVER}')
+    # print(f'Difference Tab: {otsu_thresh-THRESHOLD_TAB}')
+
+
+def get_otsu_thresh(cap):
+    _, frame = cap.read()
+    img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
+    otsu_thresh, _ = cv2.threshold(
+        blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    return otsu_thresh
 
 
 def main():
     global frame_width, frame_height, cap
     cap = cv2.VideoCapture(6)
     kernel = np.ones((10, 10), dtype=np.float64)
-    # calibrate(cap)
+    calibrate(cap)
     while (True):
         touched = False
         event_counter = 0
@@ -144,7 +158,7 @@ def filter_contours(contours, hover: bool):
             if (radius > 80) or (radius < 10):
                 continue
             filtered_contours.append(approx)
-        if not hover and area > 250 and area < 2000:
+        if not hover and area > 150 and area < 2000:
             filtered_contours.append(approx)
     return filtered_contours
 
