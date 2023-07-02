@@ -1,9 +1,9 @@
 import time
 from json import dumps
 from socket import AF_INET, SOCK_DGRAM, socket
-
 import cv2
 import numpy as np
+import config
 
 THRESHOLD_TAB = 35
 THRESHOLD_HOVER = 65
@@ -37,13 +37,23 @@ def calibrate(cap):
     print('Starting calibration...')
     # Place finger on touchscreen
     time_end = time.time() + 5
+    thresholds = []
     while time.time() < time_end:
         thresh = get_otsu_thresh(cap)
+        thresholds.append(thresh)
     print('Calibration complete')
-    print(thresh)
+    thresh_sum = 0
+    for thresh in thresholds:
+        thresh_sum += thresh
+    average = thresh_sum/len(thresholds)
+    print(average)
 
-    THRESHOLD_TAB = thresh/2.5
-    THRESHOLD_HOVER = thresh/1.5
+    THRESHOLD_TAB = average / 2.8
+    THRESHOLD_HOVER = average / 1.8
+
+    print(f'Thresh Touch: {THRESHOLD_TAB}')
+    print(f'Thresh Hover: {THRESHOLD_HOVER}')
+
     # print(f'Difference Hover: {otsu_thresh-THRESHOLD_HOVER}')
     # print(f'Difference Tab: {otsu_thresh-THRESHOLD_TAB}')
 
@@ -59,13 +69,14 @@ def get_otsu_thresh(cap):
 
 def main():
     global frame_width, frame_height, cap
-    cap = cv2.VideoCapture(6)
+    cap = cv2.VideoCapture(config.CAMERA_FEED)
     kernel = np.ones((10, 10), dtype=np.float64)
     calibrate(cap)
     while (True):
         touched = False
         event_counter = 0
         ret, frame = cap.read()
+        frame = cv2.flip(frame, 1)
         if (frame_width == 0):
             frame_width = len(frame[1])
             frame_height = len(frame)
@@ -83,10 +94,8 @@ def main():
         for contour in contours:
             (x, y), radius = cv2.minEnclosingCircle(contour)
             x, y, w, h = cv2.boundingRect(contour)
-            if (radius > 40 or radius < 1):
-                continue
             touched = True
-            cv2.rectangle(thresh_tab, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.rectangle(closing_tab, (x, y), (x+w, y+h), (0, 255, 0), 2)
             # center = (int(x), int(y))
             # radius = int(radius)
             construct_event(event_counter, True, x, y)
@@ -101,22 +110,22 @@ def main():
         dilation = cv2.dilate(thresh, kernel)
         closing = cv2.erode(dilation, kernel)
         contours, _ = cv2.findContours(
-            closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours = filter_contours(contours, hover=True)
 
         if (not touched):
+            counter = 0
             for contour in contours:
                 (x, y), radius = cv2.minEnclosingCircle(contour)
                 x, y, w, h = cv2.boundingRect(contour)
-                if (radius > 40 or radius < 10):
-                    continue
                 cv2.rectangle(closing, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 # center = (int(x), int(y))
                 # radius = int(radius)
                 construct_event(event_counter, False, x, y)
+                event_counter += 1
                 # cv2.circle(thresh, center, radius, (0,0,255), 2)
 
-        img_contours = cv2.cvtColor(thresh_tab, cv2.COLOR_BGR2RGB)
+        img_contours = cv2.cvtColor(closing_tab, cv2.COLOR_BGR2RGB)
         img_contours = cv2.drawContours(
             img_contours, contours, -1, (255, 0, 0), 3)
         send_data()
@@ -124,7 +133,8 @@ def main():
 
         }
         # cv2.drawContours(img_contours, contours, -1, (255, 0, 0), 3)
-        cv2.imshow('frame', img_contours)
+        if(config.DEBUG_FLAG_TOUCH_INPUT):
+            cv2.imshow('frame', closing)
         if cv2.waitKey(1) & 0xFF == ord('q'):  # to quite the program
             break
 
@@ -153,18 +163,15 @@ def filter_contours(contours, hover: bool):
         epsilon = 0.005*cv2.arcLength(cont, True)
         approx = cv2.approxPolyDP(cont, epsilon, True)
         area = cv2.contourArea(approx)
-        if hover and area > 1000 and area < 5000:
+        if hover and area > 500 and area < 2000:
             (x, y), radius = cv2.minEnclosingCircle(approx)
-            if (radius > 80) or (radius < 10):
-                continue
             filtered_contours.append(approx)
-        if not hover and area > 150 and area < 2000:
+        if not hover and area > 50 and area < 10000:
             filtered_contours.append(approx)
     return filtered_contours
 
 
 def send_data():
-    # print(message)
     # converts the dict to a json and sends it to local host
     sock.sendto(dumps(message).encode(), (IP, PORT))
 
