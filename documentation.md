@@ -32,6 +32,8 @@ The purpose of this software is to detect fingers on the touch area and distingu
 
 In order to achieve finger detection, we extract a frame from the camera feed and apply the following transformations to it.
 
+Image with no transformations applied:
+
 ![Original Image](assets/frame.png "Original Image")
 
 As a first step, we convert it to the gray color space.
@@ -54,7 +56,7 @@ We filter the contours based on their size to avoid false positives.
 
 ![Filtered Contours](assets/filtered_contours.png "Filtered Contours")
 
-To translate the contours into coordinates, we constructed an enclosing circle around it, retrieved the x and y values of the center, and sent a DIPPID event with these coordinates.
+To translate the contours into coordinates, we draw bounding boxes around them, retrieve the x and y values of the center, and send a DIPPID event with these coordinates.
 
 ## Hover and Touch Distinction
 
