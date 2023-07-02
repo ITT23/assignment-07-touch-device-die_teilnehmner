@@ -19,6 +19,8 @@ from DIPPID import SensorUDP
 sock = socket(AF_INET, SOCK_DGRAM)
 sensor = SensorUDP(config.PORT)
 window = pyglet.window.Window(config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
+drawing_circles = []
+batch = pyglet.graphics.Batch()
 
 
 def setup_gestures() -> dict[str, str]:
@@ -29,7 +31,7 @@ def setup_gestures() -> dict[str, str]:
         dict[str,str]: Mapping of gesture and corresponding program
     '''
     gesture_mapping: dict[str, str] = {}
-    with open('03_gesture_based_application_launcher/applications.txt', encoding='utf8') as file:
+    with open('applications.txt', encoding='utf8') as file:
         for line in file:
             line = line.strip('\n')
             tokens = line.split()
@@ -70,6 +72,7 @@ def on_draw():
     '''
     window.clear()
     global coords, timer
+    batch.draw()
     events = sensor.get_value('events')
     if events:
         for event in events:
@@ -79,10 +82,10 @@ def on_draw():
                 x = events[event]['x']
                 y = events[event]['y']
                 coords.append([x, y])
+    elif coords and (time.time() - timer > 0.5):
         for coord in coords:
             coord[0] = coord[0] * config.WINDOW_WIDTH
             coord[1] = coord[1] * config.WINDOW_HEIGHT
-    elif coords and (time.time() - timer > 0.5):
         recognize()
         coords = []
         timer = 0
@@ -93,7 +96,9 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
     '''
     Sends DIPPID events with mouse coordinates whenever left mouse button is pressed and mouse is moved
     '''
+    global drawing_circles
     if buttons & pyglet.window.mouse.LEFT:
+        drawing_circles.append(pyglet.shapes.Circle(x, y, 5, color=(255,255,255), batch= batch))
         y = config.WINDOW_HEIGHT - y
         x /= config.WINDOW_WIDTH
         y /= config.WINDOW_HEIGHT
@@ -124,6 +129,8 @@ def on_mouse_release(x, y, button, modifiers):
     '''
     Sends empty DIPPID event when a mouse button is released to indicate end of gesture input
     '''
+    global drawing_circles
+    drawing_circles = []
     message = {
         'events': {}
     }
@@ -134,7 +141,6 @@ def recognize():
     '''
     Retrieves One Dollar Recognizer result and launches corresponding program
     '''
-    print(coords)
     if (coords[0][0] == coords[-1][0] and coords[0][1] == coords[-1][1]):
         return
     result = recognizer.recognize(coords)
