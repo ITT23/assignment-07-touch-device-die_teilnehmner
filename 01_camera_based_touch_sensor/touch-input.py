@@ -1,9 +1,18 @@
+'''
+This module translates inputs from the touch sensor box into DIPPID events and broadcasts them.
+
+Image processing is performed on each webcam frame to:
+-   distinguish fingers
+-   detect finger position
+-   distinguish between hover and touch
+'''
 import time
 from json import dumps
 from socket import AF_INET, SOCK_DGRAM, socket
+
+import config
 import cv2
 import numpy as np
-import config
 
 THRESHOLD_TAB = 35
 THRESHOLD_HOVER = 65
@@ -20,22 +29,16 @@ frame_height = 0
 
 
 def calibrate(cap):
-    # TODO
-    # Hover over touchscreen
-    # Determine threshold with Otsu
-    # Substract 50 (or any suitable value) from threshold
-    # => THRESHOLD_HOVER
+    '''
+    Calibrates threshold to adapt to different lighting situations
 
-    # either:
-    # repeat for THRESHOLD_TAB
-
-    # substract higher value from threshold to generate THRESHOLD_TAB
+    Args:
+        cap     video capture source
+    '''
     global THRESHOLD_TAB, THRESHOLD_HOVER
-    # Don't place anything on touchscreen
     print("Place finger on touchscreen")
     time.sleep(2)
     print('Starting calibration...')
-    # Place finger on touchscreen
     time_end = time.time() + 5
     thresholds = []
     while time.time() < time_end:
@@ -46,19 +49,21 @@ def calibrate(cap):
     for thresh in thresholds:
         thresh_sum += thresh
     average = thresh_sum/len(thresholds)
-    print(average)
 
     THRESHOLD_TAB = average / 2.8
     THRESHOLD_HOVER = average / 1.8
 
-    print(f'Thresh Touch: {THRESHOLD_TAB}')
-    print(f'Thresh Hover: {THRESHOLD_HOVER}')
-
-    # print(f'Difference Hover: {otsu_thresh-THRESHOLD_HOVER}')
-    # print(f'Difference Tab: {otsu_thresh-THRESHOLD_TAB}')
-
 
 def get_otsu_thresh(cap):
+    '''
+    Retrieves threshold of Otsu's Binarization on frame
+
+    Args:
+        cap     video capture source
+
+    Returns:
+        otsu_thresh     value if threshold with Otsu Binarization
+    '''
     _, frame = cap.read()
     img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
@@ -68,6 +73,9 @@ def get_otsu_thresh(cap):
 
 
 def main():
+    '''
+    Retrieves frame from webcam, detects fingers and sends DIPPID events according to position and input type
+    '''
     global frame_width, frame_height, cap
     cap = cv2.VideoCapture(config.CAMERA_FEED)
     kernel = np.ones((10, 10), dtype=np.float64)
@@ -83,7 +91,6 @@ def main():
         img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         contours = []
-        # Threshold Tab
         ret, thresh_tab = cv2.threshold(
             img_gray, THRESHOLD_TAB, 255, cv2.THRESH_BINARY)
         dilation_tab = cv2.dilate(thresh_tab, kernel)
@@ -96,13 +103,9 @@ def main():
             x, y, w, h = cv2.boundingRect(contour)
             touched = True
             cv2.rectangle(closing_tab, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            # center = (int(x), int(y))
-            # radius = int(radius)
             construct_event(event_counter, True, x, y)
             event_counter += 1
-            # cv2.circle(thresh_tab, center, radius, (0,255,0), 2)
 
-        # Threshold hover
         blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
         ret, thresh = cv2.threshold(
             img_gray, THRESHOLD_HOVER, 255, cv2.THRESH_BINARY)
@@ -119,11 +122,8 @@ def main():
                 (x, y), radius = cv2.minEnclosingCircle(contour)
                 x, y, w, h = cv2.boundingRect(contour)
                 cv2.rectangle(closing, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                # center = (int(x), int(y))
-                # radius = int(radius)
                 construct_event(event_counter, False, x, y)
                 event_counter += 1
-                # cv2.circle(thresh, center, radius, (0,0,255), 2)
 
         img_contours = cv2.cvtColor(closing_tab, cv2.COLOR_BGR2RGB)
         img_contours = cv2.drawContours(
@@ -132,14 +132,22 @@ def main():
         message['events'] = {
 
         }
-        # cv2.drawContours(img_contours, contours, -1, (255, 0, 0), 3)
-        if(config.DEBUG_FLAG_TOUCH_INPUT):
+        if (config.DEBUG_FLAG_TOUCH_INPUT):
             cv2.imshow('frame', closing)
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # to quite the program
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 
-def construct_event(counter, touched, x, y):
+def construct_event(counter, touched: bool, x, y):
+    '''
+    Creates a dictionary with x,y coordinates for DIPPID broadcast
+
+    Args:
+        intcounter:      identifier for event
+        bool touched:    flag whether touching or hovering was performed
+        x                x-coordinate
+        y                y-coordinate
+    '''
     event_type = 'hover'
     x, y = normalize(x, y)
     if (touched):
@@ -152,12 +160,33 @@ def construct_event(counter, touched, x, y):
 
 
 def normalize(x, y):
+    '''
+    Transforms a pair of coordinates to their relative position on the frame
+
+    Args:
+        x:   x-coordinate
+        y:   y-coordinate
+
+    Returns:
+        normalized_x    relative x position
+        normalized_y    relative y position
+    '''
     normalized_x = x/frame_width
     normalized_y = y/frame_height
     return normalized_x, normalized_y
 
 
 def filter_contours(contours, hover: bool):
+    '''
+    Filters out contours of certain sizes to remove false positives
+
+    Args;
+        List[contours]  List of all contours
+        bool            Flag if filtering for hover or touch inputs
+
+    Returns:
+        List[contours]  List of filtered contours
+    '''
     filtered_contours = []
     for cont in contours:
         epsilon = 0.005*cv2.arcLength(cont, True)
@@ -172,7 +201,9 @@ def filter_contours(contours, hover: bool):
 
 
 def send_data():
-    # converts the dict to a json and sends it to local host
+    '''
+    Converts the dictionary to a json and sends it to localhost via DIPPID protocol
+    '''
     sock.sendto(dumps(message).encode(), (IP, PORT))
 
 
