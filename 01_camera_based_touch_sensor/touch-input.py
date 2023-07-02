@@ -23,6 +23,7 @@ message = {
 sock = socket(AF_INET, SOCK_DGRAM)
 frame_width = 0
 frame_height = 0
+touch_coordinates = []
 
 
 def calibrate(cap):
@@ -77,7 +78,7 @@ def main():
     '''
     Retrieves frame from webcam, detects fingers and sends DIPPID events according to position and input type
     '''
-    global frame_width, frame_height, cap
+    global frame_width, frame_height, cap, touch_coordinates
     cap = cv2.VideoCapture(config.CAMERA_FEED)
     kernel = np.ones((10, 10), dtype=np.float64)
     calibrate(cap)
@@ -101,6 +102,7 @@ def main():
         contours = filter_contours(contours, hover=False)
         for contour in contours:
             (x, y), radius = cv2.minEnclosingCircle(contour)
+            touch_coordinates.append([x, y])
             x, y, w, h = cv2.boundingRect(contour)
             touched = True
             cv2.rectangle(closing_tab, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -117,14 +119,19 @@ def main():
             thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours = filter_contours(contours, hover=True)
 
-        if (not touched):
-            counter = 0
-            for contour in contours:
-                (x, y), radius = cv2.minEnclosingCircle(contour)
-                x, y, w, h = cv2.boundingRect(contour)
-                cv2.rectangle(closing, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                construct_event(event_counter, False, x, y)
-                event_counter += 1
+        for contour in contours:
+            (x, y), radius = cv2.minEnclosingCircle(contour)
+            x, y, w, h = cv2.boundingRect(contour)
+            already_touched = False
+            for point in touch_coordinates:
+                if(x < point and point < x + w):
+                    if(y < point and point < y + h):
+                        already_touched = True
+            if(already_touched):
+                continue
+            cv2.rectangle(closing, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            construct_event(event_counter, False, x, y)
+            event_counter += 1
 
         img_contours = cv2.cvtColor(closing_tab, cv2.COLOR_BGR2RGB)
         img_contours = cv2.drawContours(
