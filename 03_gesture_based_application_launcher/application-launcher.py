@@ -12,9 +12,8 @@ from socket import AF_INET, SOCK_DGRAM, socket
 
 import config
 import pyglet
-from dollar_recognizer import Dollar_Recognizer
-
 from DIPPID import SensorUDP
+from dollar_recognizer import Dollar_Recognizer
 
 sock = socket(AF_INET, SOCK_DGRAM)
 sensor = SensorUDP(config.PORT)
@@ -31,7 +30,7 @@ def setup_gestures() -> dict[str, str]:
         dict[str,str]: Mapping of gesture and corresponding program
     '''
     gesture_mapping: dict[str, str] = {}
-    with open('applications.txt', encoding='utf8') as file:
+    with open('03_gesture_based_application_launcher/applications.txt', encoding='utf8') as file:
         for line in file:
             line = line.strip('\n')
             tokens = line.split()
@@ -70,8 +69,8 @@ def on_draw():
     '''
     Catches DIPPID events and starts recognition
     '''
-    window.clear()
     global coords, timer
+    window.clear()
     batch.draw()
     events = sensor.get_value('events')
     if events:
@@ -98,7 +97,8 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
     '''
     global drawing_circles
     if buttons & pyglet.window.mouse.LEFT:
-        drawing_circles.append(pyglet.shapes.Circle(x, y, 5, color=(255,255,255), batch= batch))
+        drawing_circles.append(pyglet.shapes.Circle(
+            x, y, 5, color=(255, 255, 255), batch=batch))
         y = config.WINDOW_HEIGHT - y
         x /= config.WINDOW_WIDTH
         y /= config.WINDOW_HEIGHT
