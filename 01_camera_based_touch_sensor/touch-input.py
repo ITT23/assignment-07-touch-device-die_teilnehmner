@@ -124,12 +124,13 @@ def main():
             x, y, w, h = cv2.boundingRect(contour)
             already_touched = False
             for point in touch_coordinates:
-                if(x < point and point < x + w):
-                    if(y < point and point < y + h):
+                if (x < point[0] and point[0] < x + w):
+                    if (y < point[1] and point[1] < y + h):
                         already_touched = True
-            if(already_touched):
+            if (already_touched):
                 continue
-            cv2.rectangle(closing, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.rectangle(closing_tab, (x, y), (x+w, y+h),
+                          color=(128, 128, 0), thickness=2)
             construct_event(event_counter, False, x, y)
             event_counter += 1
 
@@ -141,7 +142,7 @@ def main():
 
         }
         if (config.DEBUG):
-            cv2.imshow('frame', closing)
+            cv2.imshow('frame', closing_tab)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
