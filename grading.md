@@ -1,4 +1,4 @@
-## (20/20P)
+## Wagner / Wührl (20/20P)
 
 ### 1 Building a Touch Sensor (10/10P)
 
